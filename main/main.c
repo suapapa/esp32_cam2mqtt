@@ -181,6 +181,7 @@ void init_mqtt(void)
 #ifdef BOARD_ESP32CAM_AITHINKER
 
 #define BLINK_GPIO 33
+#define FLASHLIGHT_GPIO 4
 
 #define CAM_PIN_PWDN 32
 #define CAM_PIN_RESET -1	//software reset will be performed
@@ -251,6 +252,10 @@ void init_gpio()
 {
 	gpio_pad_select_gpio(BLINK_GPIO);
 	gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
+
+	gpio_pad_select_gpio(FLASHLIGHT_GPIO);
+	gpio_set_direction(FLASHLIGHT_GPIO, GPIO_MODE_OUTPUT);
+	gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
 }
 
 /* ---- */
@@ -321,6 +326,7 @@ void deinit_all()
 void app_main(void)
 {
 	init_all();
+	gpio_set_level(BLINK_GPIO, 0);	// on
 
 	++boot_count;
 	ESP_LOGI(TAG, "Boot count: %d", boot_count);
@@ -347,9 +353,10 @@ void app_main(void)
 	ESP_LOGI(TAG, "The current date/time in South Korea is: %s",
 		 strftime_buf);
 
-	gpio_set_level(BLINK_GPIO, 0);	// on
+	gpio_set_level(FLASHLIGHT_GPIO, 1);	// on
 	ESP_LOGI(TAG, "Taking picture...");
 	camera_fb_t *fb = esp_camera_fb_get();
+	gpio_set_level(FLASHLIGHT_GPIO, 0);	// on
 
 	process_image(fb->width, fb->height, fb->format, fb->buf, fb->len);
 
