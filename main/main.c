@@ -15,18 +15,17 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "mqtt_client.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
-/* The examples use WiFi configuration that you can set via project configuration menu
-
-   If you'd rather not, just change the below entries to strings with
-   the config you want - ie #define EXAMPLE_WIFI_SSID "mywifissid"
-*/
-#define WIFI_SSID          CONFIG_ESP_WIFI_SSID
-#define WIFI_PASS          CONFIG_ESP_WIFI_PASSWORD
-#define WIFI_MAXIMUM_RETRY CONFIG_ESP_MAXIMUM_RETRY
+/* Values from menuconfig */
+#define WIFI_SSID      CONFIG_ESP_WIFI_SSID
+#define WIFI_PASS      CONFIG_ESP_WIFI_PASSWORD
+#define WIFI_MAX_RETRY CONFIG_ESP_MAXIMUM_RETRY
+#define MQTT_URI       CONFIG_ESP_MQTT_HOST_URI
+#define MQTT_TOPIC     CONFIG_ESP_MQTT_TOPIC
 
 /* FreeRTOS event group to signal when we are connected*/
 static EventGroupHandle_t s_wifi_event_group;
@@ -37,19 +36,19 @@ static EventGroupHandle_t s_wifi_event_group;
 #define WIFI_CONNECTED_BIT BIT0
 #define WIFI_FAIL_BIT      BIT1
 
-static const char *TAG = "wifi station";
+static const char *TAG = "cam2mqtt";
 
 static int s_retry_num = 0;
 
 static void
 wifi_event_handler(void *arg, esp_event_base_t event_base,
-	      int32_t event_id, void *event_data)
+		   int32_t event_id, void *event_data)
 {
 	if (event_base == WIFI_EVENT && event_id == WIFI_EVENT_STA_START) {
 		esp_wifi_connect();
 	} else if (event_base == WIFI_EVENT
 		   && event_id == WIFI_EVENT_STA_DISCONNECTED) {
-		if (s_retry_num < WIFI_MAXIMUM_RETRY) {
+		if (s_retry_num < WIFI_MAX_RETRY) {
 			esp_wifi_connect();
 			s_retry_num++;
 			ESP_LOGI(TAG, "retry to connect to the AP");
@@ -123,10 +122,10 @@ void wifi_init_sta(void)
 	 * happened. */
 	if (bits & WIFI_CONNECTED_BIT) {
 		ESP_LOGI(TAG, "connected to ap SSID:%s password:%s",
-			 WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+			 WIFI_SSID, WIFI_PASS);
 	} else if (bits & WIFI_FAIL_BIT) {
 		ESP_LOGI(TAG, "Failed to connect to SSID:%s, password:%s",
-			 WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+			 WIFI_SSID, WIFI_PASS);
 	} else {
 		ESP_LOGE(TAG, "UNEXPECTED EVENT");
 	}
@@ -154,7 +153,25 @@ void init_wifi(void)
 	wifi_init_sta();
 }
 
+/* ---- */
+
+const esp_mqtt_client_config_t mqtt_cfg = {
+	.uri = MQTT_URI,
+};
+
+static esp_mqtt_client_handle_t mqtt_client;
+
+void init_mqtt(void)
+{
+	mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
+	// esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
+	esp_mqtt_client_start(mqtt_client);
+}
+
+/* ---- */
+
 void app_main(void)
 {
 	init_wifi();
+	init_mqtt();
 }
