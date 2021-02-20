@@ -7,5 +7,8 @@
   "[c]": {
     "editor.quickSuggestions": true
   },
-  "C_Cpp.intelliSenseEngine": "Tag Parser"
+  "C_Cpp.intelliSenseEngine": "Tag Parser",
+  "files.associations": {
+    "esp_system.h": "c"
+  }
 }
