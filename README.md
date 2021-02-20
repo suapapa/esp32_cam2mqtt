@@ -1,0 +1,36 @@
+# esp32_cam2mqtt
+
+Take snapshot and send it to an mqtt topic using ESP32-CAM.
+This project use [esp-idf](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/#).
+
+## requirements
+
+Install [esp-idf](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/#)
+
+Install [ESP32 Camera Driver](https://github.com/espressif/esp32-camera):
+
+    $ cd $IDF_PATH/components
+    $ git clone https://github.com/espressif/esp32-camera
+
+## clone, configure and build
+
+Clone poject:
+
+    $ cd ~/esp
+    $ git clone https://github.com/suapapa/esp32_cam2mqtt
+
+Configure wifi-ssid, wifi-pass, mqtt-uri, mqtt-topic and etc...:
+
+    $ cd cam2mqtt
+    $ get_idf
+    $ idf.py menuconfig
+
+Build, flash, monitor:
+
+    $ idf.py build
+    $ idf.py -p /dev/ttyUSB0 flash
+    $ idf.py -p /dev/ttyUSB0 monitor
+
+## Beautify code
+
+    indent -linux main/main.c
