@@ -1,3 +1,5 @@
+.gitignore
 build/
 sdkconfig
 sdkconfig.old
+*~
