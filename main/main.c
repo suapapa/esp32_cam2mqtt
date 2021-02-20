@@ -14,10 +14,11 @@
 #include "esp_wifi.h"
 #include "esp_event.h"
 #include "esp_log.h"
+#include "esp_sntp.h"
+#include "esp_sleep.h"
 #include "nvs_flash.h"
 #include "mqtt_client.h"
 #include "esp_camera.h"
-#include "driver/gpio.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -43,6 +44,8 @@ static EventGroupHandle_t s_wifi_event_group;
 static const char *TAG = "cam2mqtt";
 
 static int s_retry_num = 0;
+
+RTC_DATA_ATTR static int boot_count = 0;
 
 static void
 wifi_event_handler(void *arg, esp_event_base_t event_base,
@@ -252,6 +255,41 @@ void init_gpio()
 
 /* ---- */
 
+void time_sync_notification_cb(struct timeval *tv)
+{
+	ESP_LOGI(TAG, "Notification of a time synchronization event");
+}
+
+static void initialize_sntp(void)
+{
+	ESP_LOGI(TAG, "Initializing SNTP");
+	sntp_setoperatingmode(SNTP_OPMODE_POLL);
+	sntp_setservername(0, "pool.ntp.org");
+	sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+	sntp_init();
+}
+
+static void obtain_time(void)
+{
+	initialize_sntp();
+
+	// wait for time to be set
+	time_t now = 0;
+	struct tm timeinfo = { 0 };
+	int retry = 0;
+	const int retry_count = 10;
+	while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET
+	       && ++retry < retry_count) {
+		ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)",
+			 retry, retry_count);
+		vTaskDelay(2000 / portTICK_PERIOD_MS);
+	}
+	time(&now);
+	localtime_r(&now, &timeinfo);
+}
+
+/* ---- */
+
 void process_image(size_t w, size_t h, pixformat_t fmt, uint8_t * buf,
 		   size_t buf_len)
 {
@@ -262,26 +300,65 @@ void process_image(size_t w, size_t h, pixformat_t fmt, uint8_t * buf,
 				buf_len, 0, 0);
 }
 
-/* ---- */
-
-void app_main(void)
+void init_all()
 {
 	init_wifi();
 	init_mqtt();
 	init_camera();
 	init_gpio();
+}
 
-	while (1) {
-		ESP_LOGI(TAG, "Taking picture...");
-		gpio_set_level(BLINK_GPIO, 1);
-		camera_fb_t *fb = esp_camera_fb_get();
+void deinit_all()
+{
+	// rtc_gpio_isolate(BLINK_GPIO);
+	esp_camera_deinit();
+	esp_mqtt_client_destroy(mqtt_client);
+	esp_wifi_stop();
+}
 
-		process_image(fb->width, fb->height, fb->format, fb->buf,
-			      fb->len);
+/* ---- */
 
-		esp_camera_fb_return(fb);
-		gpio_set_level(BLINK_GPIO, 0);
+void app_main(void)
+{
+	init_all();
 
-		vTaskDelay(10000 / portTICK_RATE_MS);
+	++boot_count;
+	ESP_LOGI(TAG, "Boot count: %d", boot_count);
+
+	time_t now;
+	struct tm timeinfo;
+	time(&now);
+	localtime_r(&now, &timeinfo);
+	// Is time set? If not, tm_year will be (1970 - 1900).
+	if (timeinfo.tm_year < (2016 - 1900)) {
+		ESP_LOGI(TAG,
+			 "Time is not set yet. Connecting to WiFi and getting time over NTP.");
+		obtain_time();
+		// update 'now' variable with current time
+		time(&now);
 	}
+
+	char strftime_buf[64];
+
+	setenv("TZ", "GMT+9", 1);
+	tzset();
+	localtime_r(&now, &timeinfo);
+	strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+	ESP_LOGI(TAG, "The current date/time in South Korea is: %s",
+		 strftime_buf);
+
+	gpio_set_level(BLINK_GPIO, 0);	// on
+	ESP_LOGI(TAG, "Taking picture...");
+	camera_fb_t *fb = esp_camera_fb_get();
+
+	process_image(fb->width, fb->height, fb->format, fb->buf, fb->len);
+
+	esp_camera_fb_return(fb);
+	gpio_set_level(BLINK_GPIO, 1);	// off
+
+	deinit_all();
+
+	const int deep_sleep_sec = 5 * 60;
+	ESP_LOGI(TAG, "Entering deep sleep for %d seconds", deep_sleep_sec);
+	esp_deep_sleep(1000000LL * deep_sleep_sec);
 }
