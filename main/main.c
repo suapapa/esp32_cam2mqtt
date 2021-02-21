@@ -297,6 +297,22 @@ static void obtain_time(void)
 
 /* ---- */
 
+void draw_info_string(uint8_t * fb_buf, const char *str)
+{
+	// VGA
+	int cam_w = 640;
+	int cam_h = 480;
+
+	set_defaultfont();
+	draw_string(fb_buf, cam_w, cam_h, 8 - 1, 8, str, FONTCOLOR_BLACK);
+	draw_string(fb_buf, cam_w, cam_h, 8 + 1, 8, str, FONTCOLOR_BLACK);
+	draw_string(fb_buf, cam_w, cam_h, 8, 8 - 1, str, FONTCOLOR_BLACK);
+	draw_string(fb_buf, cam_w, cam_h, 8, 8 + 1, str, FONTCOLOR_BLACK);
+	draw_string(fb_buf, cam_w, cam_h, 8, 8, str, FONTCOLOR_WHITE);
+}
+
+/* ---- */
+
 void init_all()
 {
 	init_wifi();
@@ -329,27 +345,31 @@ void app_main(void)
 	obtain_time();
 	time(&now);
 
-	char strftime_buf[64];
-	setenv("TZ", "UTC-9", 1); // TODO: means UTC+9
+	char strftime_buf[32];
+	setenv("TZ", "UTC-9", 1);	// TODO: means UTC+9
 	tzset();
 	localtime_r(&now, &timeinfo);
+
+	// only take snapshot in 11 and 12 o'clock
+	// it makes -at last- one picture taken at a day.
+	if (boot_count > 1 && timeinfo.tm_hour != 11 && timeinfo.tm_hour != 12) {
+		ESP_LOGI(TAG, "Skip take picture");
+		goto deepsleep;
+	}
+
 	strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
-	/* Sat Feb 20 22:06:52 2021 */
-	ESP_LOGI(TAG, "The current date/time in South Korea is: %s",
-		 strftime_buf);
+	ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
+
+	char strinfo_buf[48];
+	sprintf(strinfo_buf, "%s cnt: %03d", strftime_buf, boot_count);
 
 	gpio_set_level(FLASHLIGHT_GPIO, 1);	// on
 	ESP_LOGI(TAG, "Taking picture...");
 	camera_fb_t *fb = esp_camera_fb_get();
 	gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
 
-	draw_string(fb->buf, 640, 480, 8 - 1, 8, strftime_buf, FONTCOLOR_BLACK);
-	draw_string(fb->buf, 640, 480, 8 + 1, 8, strftime_buf, FONTCOLOR_BLACK);
-	draw_string(fb->buf, 640, 480, 8, 8 - 1, strftime_buf, FONTCOLOR_BLACK);
-	draw_string(fb->buf, 640, 480, 8, 8 + 1, strftime_buf, FONTCOLOR_BLACK);
-	draw_string(fb->buf, 640, 480, 8, 8, strftime_buf, FONTCOLOR_WHITE);
+	draw_info_string(fb->buf, strinfo_buf);
 
-	// grayscale bmp
 	uint8_t *buf = NULL;
 	size_t buf_len = 0;
 	bool converted = frame2jpg(fb, 80, &buf, &buf_len);
@@ -359,10 +379,9 @@ void app_main(void)
 		esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC,
 					(const char *)(buf), buf_len, 0, 0);
 	}
-	// process_image(fb->width, fb->height, fb->format, fb->buf, fb->len);
 
+ deepsleep:
 	// TODO: need free buf?
-
 	gpio_set_level(BLINK_GPIO, 1);	// off
 
 	deinit_all();
