@@ -1,7 +1,11 @@
-# esp32_cam2mqtt
+# cam2mqtt
+
+![usecase_of_cam2mqtt](_photo/cam2mqtt.png)
 
 Take snapshot and send it to an mqtt topic using ESP32-CAM.
-This project use [esp-idf](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/#).
+
+* Works well with HomeAssistant's [MQTT Camera](https://www.home-assistant.io/integrations/camera.mqtt/)
+* Use [esp-idf](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/#) not Arduino.
 
 ## requirements
 
@@ -16,7 +20,6 @@ Install [ESP32 Camera Driver](https://github.com/espressif/esp32-camera):
 
 Clone poject:
 
-    $ cd ~/esp
     $ git clone https://github.com/suapapa/esp32_cam2mqtt
 
 Configure wifi-ssid, wifi-pass, mqtt-uri, mqtt-topic and etc...:
@@ -31,6 +34,6 @@ Build, flash, monitor:
     $ idf.py -p /dev/ttyUSB0 flash
     $ idf.py -p /dev/ttyUSB0 monitor
 
-## Beautify code
+## beautify code
 
     indent -linux main/main.c
