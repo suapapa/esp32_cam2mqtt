@@ -230,7 +230,7 @@ static camera_config_t camera_config = {
 	.ledc_channel = LEDC_CHANNEL_0,
 
 	.pixel_format = PIXFORMAT_GRAYSCALE,	//YUV422,GRAYSCALE,RGB565,JPEG
-	.frame_size = FRAMESIZE_VGA,	//QQVGA-UXGA Do not use sizes above QVGA when not JPEG
+	.frame_size = FRAMESIZE_QVGA,	//QQVGA-UXGA Do not use sizes above QVGA when not JPEG
 
 	.jpeg_quality = 12,	//0-63 lower number means higher quality
 	.fb_count = 1		//if more than one, i2s runs in continuous mode. Use only with JPEG
@@ -325,20 +325,12 @@ void app_main(void)
 
 	time_t now;
 	struct tm timeinfo;
+	ESP_LOGI(TAG, "Connecting to WiFi and getting time over NTP.");
+	obtain_time();
 	time(&now);
-	localtime_r(&now, &timeinfo);
-	// Is time set? If not, tm_year will be (1970 - 1900).
-	if (timeinfo.tm_year < (2016 - 1900)) {
-		ESP_LOGI(TAG,
-			 "Time is not set yet. Connecting to WiFi and getting time over NTP.");
-		obtain_time();
-		// update 'now' variable with current time
-		time(&now);
-	}
 
 	char strftime_buf[64];
-
-	setenv("TZ", "GMT+9", 1);
+	setenv("TZ", "UTC-9", 1); // TODO: means UTC+9
 	tzset();
 	localtime_r(&now, &timeinfo);
 	strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
@@ -351,7 +343,11 @@ void app_main(void)
 	camera_fb_t *fb = esp_camera_fb_get();
 	gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
 
-	draw_string(fb->buf, 640, 480, 1, 1, strftime_buf);
+	draw_string(fb->buf, 320, 240, 8 - 1, 8, strftime_buf, FONTCOLOR_BLACK);
+	draw_string(fb->buf, 320, 240, 8 + 1, 8, strftime_buf, FONTCOLOR_BLACK);
+	draw_string(fb->buf, 320, 240, 8, 8 - 1, strftime_buf, FONTCOLOR_BLACK);
+	draw_string(fb->buf, 320, 240, 8, 8 + 1, strftime_buf, FONTCOLOR_BLACK);
+	draw_string(fb->buf, 320, 240, 8, 8, strftime_buf, FONTCOLOR_WHITE);
 
 	// grayscale bmp
 	uint8_t *buf = NULL;
@@ -371,7 +367,7 @@ void app_main(void)
 
 	deinit_all();
 
-	const int deep_sleep_sec = 5 * 60;
+	const int deep_sleep_sec = 1 * 60 * 60;
 	ESP_LOGI(TAG, "Entering deep sleep for %d seconds", deep_sleep_sec);
 	esp_deep_sleep(1000000LL * deep_sleep_sec);
 }

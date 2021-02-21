@@ -6,4 +6,4 @@ include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 set(EXTRA_COMPONENT_DIRS "componets/drawfont")
 
-project(template-app)
+project(cam2mqtt)
