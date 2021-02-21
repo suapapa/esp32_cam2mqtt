@@ -230,7 +230,7 @@ static camera_config_t camera_config = {
 	.ledc_channel = LEDC_CHANNEL_0,
 
 	.pixel_format = PIXFORMAT_GRAYSCALE,	//YUV422,GRAYSCALE,RGB565,JPEG
-	.frame_size = FRAMESIZE_QVGA,	//QQVGA-UXGA Do not use sizes above QVGA when not JPEG
+	.frame_size = FRAMESIZE_SVGA,	//QQVGA-UXGA Do not use sizes above QVGA when not JPEG
 
 	.jpeg_quality = 12,	//0-63 lower number means higher quality
 	.fb_count = 1		//if more than one, i2s runs in continuous mode. Use only with JPEG
@@ -343,16 +343,16 @@ void app_main(void)
 	camera_fb_t *fb = esp_camera_fb_get();
 	gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
 
-	draw_string(fb->buf, 320, 240, 8 - 1, 8, strftime_buf, FONTCOLOR_BLACK);
-	draw_string(fb->buf, 320, 240, 8 + 1, 8, strftime_buf, FONTCOLOR_BLACK);
-	draw_string(fb->buf, 320, 240, 8, 8 - 1, strftime_buf, FONTCOLOR_BLACK);
-	draw_string(fb->buf, 320, 240, 8, 8 + 1, strftime_buf, FONTCOLOR_BLACK);
-	draw_string(fb->buf, 320, 240, 8, 8, strftime_buf, FONTCOLOR_WHITE);
+	draw_string(fb->buf, 800, 600, 8 - 1, 8, strftime_buf, FONTCOLOR_BLACK);
+	draw_string(fb->buf, 800, 600, 8 + 1, 8, strftime_buf, FONTCOLOR_BLACK);
+	draw_string(fb->buf, 800, 600, 8, 8 - 1, strftime_buf, FONTCOLOR_BLACK);
+	draw_string(fb->buf, 800, 600, 8, 8 + 1, strftime_buf, FONTCOLOR_BLACK);
+	draw_string(fb->buf, 800, 600, 8, 8, strftime_buf, FONTCOLOR_WHITE);
 
 	// grayscale bmp
 	uint8_t *buf = NULL;
 	size_t buf_len = 0;
-	bool converted = frame2bmp(fb, &buf, &buf_len);
+	bool converted = frame2jpg(fb, 95, &buf, &buf_len);
 	esp_camera_fb_return(fb);
 	if (converted) {
 		ESP_LOGI(TAG, "Sending it to MQTT topic %s ...", MQTT_TOPIC);
