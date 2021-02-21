@@ -23,6 +23,8 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 
+#include "drawfont.h"
+
 #define BOARD_ESP32CAM_AITHINKER
 
 /* Values from menuconfig */
@@ -295,13 +297,6 @@ static void obtain_time(void)
 
 /* ---- */
 
-void draw_timestamp(camera_fb_t * fb)
-{
-
-}
-
-/* ---- */
-
 void init_all()
 {
 	init_wifi();
@@ -356,7 +351,7 @@ void app_main(void)
 	camera_fb_t *fb = esp_camera_fb_get();
 	gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
 
-	draw_timestamp(camera_fb_t * fb);
+	draw_string(fb->buf, 640, 480, 1, 1, strftime_buf);
 
 	// grayscale bmp
 	uint8_t *buf = NULL;

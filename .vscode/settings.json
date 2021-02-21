@@ -9,6 +9,7 @@
   },
   "C_Cpp.intelliSenseEngine": "Tag Parser",
   "files.associations": {
-    "esp_system.h": "c"
+    "esp_system.h": "c",
+    "*.ipp": "cpp"
   }
 }
