@@ -227,7 +227,7 @@ static camera_config_t camera_config = {
 	.ledc_timer = LEDC_TIMER_0,
 	.ledc_channel = LEDC_CHANNEL_0,
 
-	.pixel_format = PIXFORMAT_JPEG,	//YUV422,GRAYSCALE,RGB565,JPEG
+	.pixel_format = PIXFORMAT_GRAYSCALE,	//YUV422,GRAYSCALE,RGB565,JPEG
 	.frame_size = FRAMESIZE_VGA,	//QQVGA-UXGA Do not use sizes above QVGA when not JPEG
 
 	.jpeg_quality = 12,	//0-63 lower number means higher quality
@@ -295,15 +295,12 @@ static void obtain_time(void)
 
 /* ---- */
 
-void process_image(size_t w, size_t h, pixformat_t fmt, uint8_t * buf,
-		   size_t buf_len)
+void draw_timestamp(camera_fb_t * fb)
 {
-	// TODO: grayscale bmp
-	// TODO: timestamp
-	ESP_LOGI(TAG, "Picture taken! Its size was: %zu bytes", buf_len);
-	esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC, (const char *)(buf),
-				buf_len, 0, 0);
+
 }
+
+/* ---- */
 
 void init_all()
 {
@@ -350,17 +347,31 @@ void app_main(void)
 	tzset();
 	localtime_r(&now, &timeinfo);
 	strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+	/* Sat Feb 20 22:06:52 2021 */
 	ESP_LOGI(TAG, "The current date/time in South Korea is: %s",
 		 strftime_buf);
 
 	gpio_set_level(FLASHLIGHT_GPIO, 1);	// on
 	ESP_LOGI(TAG, "Taking picture...");
 	camera_fb_t *fb = esp_camera_fb_get();
-	gpio_set_level(FLASHLIGHT_GPIO, 0);	// on
+	gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
 
-	process_image(fb->width, fb->height, fb->format, fb->buf, fb->len);
+	draw_timestamp(camera_fb_t * fb);
 
+	// grayscale bmp
+	uint8_t *buf = NULL;
+	size_t buf_len = 0;
+	bool converted = frame2bmp(fb, &buf, &buf_len);
 	esp_camera_fb_return(fb);
+	if (converted) {
+		ESP_LOGI(TAG, "Sending it to MQTT topic %s ...", MQTT_TOPIC);
+		esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC,
+					(const char *)(buf), buf_len, 0, 0);
+	}
+	// process_image(fb->width, fb->height, fb->format, fb->buf, fb->len);
+
+	// TODO: need free buf?
+
 	gpio_set_level(BLINK_GPIO, 1);	// off
 
 	deinit_all();
