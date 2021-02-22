@@ -47,7 +47,7 @@ static const char *TAG = "cam2mqtt";
 
 static int s_retry_num = 0;
 
-RTC_DATA_ATTR static int boot_count = 0;
+RTC_DATA_ATTR static int take_count = 0;
 
 static void
 wifi_event_handler(void *arg, esp_event_base_t event_base,
@@ -339,21 +339,22 @@ void app_main(void)
 	init_gpio();
 	gpio_set_level(BLINK_GPIO, 0);	// on
 
-	++boot_count;
-	ESP_LOGI(TAG, "Boot count: %d", boot_count);
+	// ++take_count;
+	// ESP_LOGI(TAG, "Boot count: %d", take_count);
 
 	time_t now;
 	struct tm timeinfo;
 	time(&now);
 	localtime_r(&now, &timeinfo);
-    if (timeinfo.tm_year < (2016 - 1900)) {
-        ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
+	if (timeinfo.tm_year < (2016 - 1900)) {
+		ESP_LOGI(TAG,
+			 "Time is not set yet. Connecting to WiFi and getting time over NTP.");
 		init_wifi();
 		is_wifi_connected = true;
-        obtain_time();
-        // update 'now' variable with current time
-        time(&now);
-    }	
+		obtain_time();
+		// update 'now' variable with current time
+		time(&now);
+	}
 
 	char strftime_buf[32];
 	setenv("TZ", "UTC-9", 1);	// TODO: means UTC+9
@@ -362,7 +363,7 @@ void app_main(void)
 
 	// only take snapshot in 11 and 12 o'clock
 	// it makes -at last- one picture taken at a day.
-	if (boot_count > 1 && timeinfo.tm_hour != 11 && timeinfo.tm_hour != 12) {
+	if (take_count > 0 && timeinfo.tm_hour != 12) {
 		ESP_LOGI(TAG, "Skip take picture");
 		goto deepsleep;
 	}
@@ -370,15 +371,14 @@ void app_main(void)
 	strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
 	ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
 
-	char strinfo_buf[48];
-	sprintf(strinfo_buf, "%s cnt: %03d", strftime_buf, boot_count);
-
 	// gpio_set_level(FLASHLIGHT_GPIO, 1);  // on
 	ESP_LOGI(TAG, "Taking picture...");
 	init_camera();
 	camera_fb_t *fb = esp_camera_fb_get();
 	// gpio_set_level(FLASHLIGHT_GPIO, 0);  // off
 
+	char strinfo_buf[48];
+	sprintf(strinfo_buf, "%s cnt: %03d", strftime_buf, ++take_count);
 	draw_info_string(fb->buf, strinfo_buf);
 
 	uint8_t *buf = NULL;
