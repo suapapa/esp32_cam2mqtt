@@ -172,6 +172,7 @@ static esp_mqtt_client_handle_t mqtt_client;
 
 void init_mqtt(void)
 {
+	ESP_LOGI(TAG, "Init MQTT");
 	mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
 	// esp_mqtt_client_register_event(client, ESP_EVENT_ANY_ID, mqtt_event_handler, client);
 	esp_mqtt_client_start(mqtt_client);
@@ -257,7 +258,7 @@ void init_gpio()
 
 	// gpio_pad_select_gpio(FLASHLIGHT_GPIO);
 	// gpio_set_direction(FLASHLIGHT_GPIO, GPIO_MODE_OUTPUT);
-	// gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
+	// gpio_set_level(FLASHLIGHT_GPIO, 0);  // off
 }
 
 /* ---- */
@@ -333,7 +334,9 @@ void deinit_all()
 
 void app_main(void)
 {
-	init_all();
+	bool is_wifi_connected = false;
+
+	init_gpio();
 	gpio_set_level(BLINK_GPIO, 0);	// on
 
 	++boot_count;
@@ -341,9 +344,16 @@ void app_main(void)
 
 	time_t now;
 	struct tm timeinfo;
-	ESP_LOGI(TAG, "Getting time over NTP.");
-	obtain_time();
 	time(&now);
+	localtime_r(&now, &timeinfo);
+    if (timeinfo.tm_year < (2016 - 1900)) {
+        ESP_LOGI(TAG, "Time is not set yet. Connecting to WiFi and getting time over NTP.");
+		init_wifi();
+		is_wifi_connected = true;
+        obtain_time();
+        // update 'now' variable with current time
+        time(&now);
+    }	
 
 	char strftime_buf[32];
 	setenv("TZ", "UTC-9", 1);	// TODO: means UTC+9
@@ -363,10 +373,11 @@ void app_main(void)
 	char strinfo_buf[48];
 	sprintf(strinfo_buf, "%s cnt: %03d", strftime_buf, boot_count);
 
-	// gpio_set_level(FLASHLIGHT_GPIO, 1);	// on
+	// gpio_set_level(FLASHLIGHT_GPIO, 1);  // on
 	ESP_LOGI(TAG, "Taking picture...");
+	init_camera();
 	camera_fb_t *fb = esp_camera_fb_get();
-	// gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
+	// gpio_set_level(FLASHLIGHT_GPIO, 0);  // off
 
 	draw_info_string(fb->buf, strinfo_buf);
 
@@ -374,11 +385,18 @@ void app_main(void)
 	size_t buf_len = 0;
 	bool converted = frame2jpg(fb, 80, &buf, &buf_len);
 	esp_camera_fb_return(fb);
-	if (converted) {
-		ESP_LOGI(TAG, "Sending it to MQTT topic %s ...", MQTT_TOPIC);
-		esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC,
-					(const char *)(buf), buf_len, 0, 0);
+	if (!converted)
+		goto deepsleep;
+
+	if (!is_wifi_connected) {
+		init_wifi();
+		is_wifi_connected = true;
 	}
+	init_mqtt();
+
+	ESP_LOGI(TAG, "Sending it to MQTT topic %s ...", MQTT_TOPIC);
+	esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC,
+				(const char *)(buf), buf_len, 0, 0);
 
  deepsleep:
 	// TODO: need free buf?
