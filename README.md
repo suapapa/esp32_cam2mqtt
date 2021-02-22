@@ -6,6 +6,7 @@ Take snapshot and send it to an mqtt topic using ESP32-CAM.
 
 * Works well with HomeAssistant's [MQTT Camera](https://www.home-assistant.io/integrations/camera.mqtt/)
 * Use [esp-idf](https://docs.espressif.com/projects/esp-idf/en/latest/esp32/#) not Arduino.
+* It takes one -or two- picture for a day and go to deep sleep.
 
 ## requirements
 
