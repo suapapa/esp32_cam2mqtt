@@ -314,24 +314,6 @@ void draw_info_string(uint8_t * fb_buf, const char *str)
 
 /* ---- */
 
-void init_all()
-{
-	init_wifi();
-	init_mqtt();
-	init_camera();
-	init_gpio();
-}
-
-void deinit_all()
-{
-	// rtc_gpio_isolate(BLINK_GPIO);
-	esp_camera_deinit();
-	esp_mqtt_client_destroy(mqtt_client);
-	esp_wifi_stop();
-}
-
-/* ---- */
-
 void app_main(void)
 {
 	bool is_wifi_connected = false;
@@ -377,7 +359,7 @@ void app_main(void)
 	camera_fb_t *fb = esp_camera_fb_get();
 	// gpio_set_level(FLASHLIGHT_GPIO, 0);  // off
 
-	char strinfo_buf[48];
+	char strinfo_buf[64];
 	sprintf(strinfo_buf, "%s cnt: %03d", strftime_buf, ++take_count);
 	draw_info_string(fb->buf, strinfo_buf);
 
@@ -385,6 +367,7 @@ void app_main(void)
 	size_t buf_len = 0;
 	bool converted = frame2jpg(fb, 80, &buf, &buf_len);
 	esp_camera_fb_return(fb);
+	esp_camera_deinit();
 	if (!converted)
 		goto deepsleep;
 
@@ -392,8 +375,8 @@ void app_main(void)
 		init_wifi();
 		is_wifi_connected = true;
 	}
-	init_mqtt();
 
+	init_mqtt();
 	ESP_LOGI(TAG, "Sending it to MQTT topic %s ...", MQTT_TOPIC);
 	esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC,
 				(const char *)(buf), buf_len, 0, 0);
@@ -402,7 +385,9 @@ void app_main(void)
 	// TODO: need free buf?
 	gpio_set_level(BLINK_GPIO, 1);	// off
 
-	deinit_all();
+	esp_mqtt_client_destroy(mqtt_client);
+	if (is_wifi_connected)
+		esp_wifi_stop();
 
 	const int deep_sleep_sec = 1 * 60 * 60;
 	ESP_LOGI(TAG, "Entering deep sleep for %d seconds", deep_sleep_sec);
