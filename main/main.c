@@ -255,9 +255,9 @@ void init_gpio()
 	gpio_pad_select_gpio(BLINK_GPIO);
 	gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
 
-	gpio_pad_select_gpio(FLASHLIGHT_GPIO);
-	gpio_set_direction(FLASHLIGHT_GPIO, GPIO_MODE_OUTPUT);
-	gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
+	// gpio_pad_select_gpio(FLASHLIGHT_GPIO);
+	// gpio_set_direction(FLASHLIGHT_GPIO, GPIO_MODE_OUTPUT);
+	// gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
 }
 
 /* ---- */
@@ -341,7 +341,7 @@ void app_main(void)
 
 	time_t now;
 	struct tm timeinfo;
-	ESP_LOGI(TAG, "Connecting to WiFi and getting time over NTP.");
+	ESP_LOGI(TAG, "Getting time over NTP.");
 	obtain_time();
 	time(&now);
 
@@ -363,10 +363,10 @@ void app_main(void)
 	char strinfo_buf[48];
 	sprintf(strinfo_buf, "%s cnt: %03d", strftime_buf, boot_count);
 
-	gpio_set_level(FLASHLIGHT_GPIO, 1);	// on
+	// gpio_set_level(FLASHLIGHT_GPIO, 1);	// on
 	ESP_LOGI(TAG, "Taking picture...");
 	camera_fb_t *fb = esp_camera_fb_get();
-	gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
+	// gpio_set_level(FLASHLIGHT_GPIO, 0);	// off
 
 	draw_info_string(fb->buf, strinfo_buf);
 
