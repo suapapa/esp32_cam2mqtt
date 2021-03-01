@@ -277,13 +277,13 @@ static void initialize_sntp(void)
 	sntp_init();
 }
 
-static void obtain_time(void)
+static void sync_time(void)
 {
 	initialize_sntp();
 
 	// wait for time to be set
-	time_t now = 0;
-	struct tm timeinfo = { 0 };
+	// time_t now = 0;
+	// struct tm timeinfo = { 0 };
 	int retry = 0;
 	const int retry_count = 10;
 	while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET
@@ -292,8 +292,10 @@ static void obtain_time(void)
 			 retry, retry_count);
 		vTaskDelay(2000 / portTICK_PERIOD_MS);
 	}
-	time(&now);
-	localtime_r(&now, &timeinfo);
+	// time(&now);
+	// setenv("TZ", "UTC-9", 1);
+	// tzset();
+	// localtime_r(&now, &timeinfo);
 }
 
 /* ---- */
@@ -327,21 +329,19 @@ void app_main(void)
 	time_t now;
 	struct tm timeinfo;
 	time(&now);
+	setenv("TZ", "UTC-9", 1);	// TODO: means UTC+9
+	tzset();
 	localtime_r(&now, &timeinfo);
 	if (timeinfo.tm_year < (2016 - 1900)) {
 		ESP_LOGI(TAG,
 			 "Time is not set yet. Connecting to WiFi and getting time over NTP.");
 		init_wifi();
 		is_wifi_connected = true;
-		obtain_time();
+		sync_time();
 		// update 'now' variable with current time
 		time(&now);
+		localtime_r(&now, &timeinfo);
 	}
-
-	char strftime_buf[32];
-	setenv("TZ", "UTC-9", 1);	// TODO: means UTC+9
-	tzset();
-	localtime_r(&now, &timeinfo);
 
 	// only take snapshot in 11 and 12 o'clock
 	// it makes -at last- one picture taken at a day.
@@ -350,6 +350,7 @@ void app_main(void)
 		goto deepsleep;
 	}
 
+	char strftime_buf[32];
 	strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
 	ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
 
@@ -360,8 +361,8 @@ void app_main(void)
 
 	camera_fb_t *fb;
 	// for (int i = 0; i < 5; i++) {
-	// 	fb = esp_camera_fb_get();
-	// 	esp_camera_fb_return(fb);
+	//      fb = esp_camera_fb_get();
+	//      esp_camera_fb_return(fb);
 	// }
 	fb = esp_camera_fb_get();
 	// gpio_set_level(FLASHLIGHT_GPIO, 0);  // off
@@ -387,6 +388,9 @@ void app_main(void)
 	ESP_LOGI(TAG, "Sending it to MQTT topic %s ...", MQTT_TOPIC);
 	esp_mqtt_client_publish(mqtt_client, MQTT_TOPIC,
 				(const char *)(buf), buf_len, 0, 0);
+	if (take_count > 1) {
+		sync_time();	// interal RTC sucks sync time again.
+	}
 
  deepsleep:
 	// TODO: need free buf?
