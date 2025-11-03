@@ -2,10 +2,18 @@
   "C_Cpp.clang_format_style": "Visual Studio",
   "editor.formatOnSave": false,
   "[cpp]": {
-    "editor.quickSuggestions": true
+    "editor.quickSuggestions": {
+      "comments": "on",
+      "strings": "on",
+      "other": "on"
+    }
   },
   "[c]": {
-    "editor.quickSuggestions": true
+    "editor.quickSuggestions": {
+      "comments": "on",
+      "strings": "on",
+      "other": "on"
+    }
   },
   "C_Cpp.intelliSenseEngine": "Tag Parser",
   "files.associations": {
@@ -13,5 +21,14 @@
     "*.ipp": "cpp"
   },
   "idf.adapterTargetName": "esp32",
-  "idf.port": "/dev/cu.usbserial-14140"
+  "idf.port": "/dev/tty.usbserial-110",
+  "idf.pythonInstallPath": "/opt/homebrew/bin/python3",
+  "idf.espIdfPath": "/Users/suapapa/esp/v6.0/esp-idf",
+  "idf.toolsPath": "/Users/suapapa/.espressif",
+  "idf.openOcdConfigs": [
+    "interface/ftdi/esp32_devkitj_v1.cfg",
+    "target/esp32.cfg"
+  ],
+  "idf.monitorPort": "/dev/tty.usbserial-110",
+  "idf.flashType": "UART"
 }

@@ -19,6 +19,7 @@
 #include "nvs_flash.h"
 #include "mqtt_client.h"
 #include "esp_camera.h"
+#include "driver/gpio.h"
 
 #include "lwip/err.h"
 #include "lwip/sys.h"
@@ -113,7 +114,7 @@ void wifi_init_sta(void)
 			},
 	};
 	ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA));
-	ESP_ERROR_CHECK(esp_wifi_set_config(ESP_IF_WIFI_STA, &wifi_config));
+	ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_STA, &wifi_config));
 	ESP_ERROR_CHECK(esp_wifi_start());
 
 	ESP_LOGI(TAG, "wifi_init_sta finished.");
@@ -164,8 +165,8 @@ void init_wifi(void)
 
 /* ---- */
 
-const esp_mqtt_client_config_t mqtt_cfg = {
-	.uri = MQTT_URI,
+static const esp_mqtt_client_config_t mqtt_cfg = {
+	.broker.address.uri = MQTT_URI,
 };
 
 static esp_mqtt_client_handle_t mqtt_client;
@@ -253,10 +254,8 @@ static esp_err_t init_camera()
 
 void init_gpio()
 {
-	gpio_pad_select_gpio(BLINK_GPIO);
 	gpio_set_direction(BLINK_GPIO, GPIO_MODE_OUTPUT);
 
-	// gpio_pad_select_gpio(FLASHLIGHT_GPIO);
 	// gpio_set_direction(FLASHLIGHT_GPIO, GPIO_MODE_OUTPUT);
 	// gpio_set_level(FLASHLIGHT_GPIO, 0);  // off
 }
@@ -271,10 +270,10 @@ void time_sync_notification_cb(struct timeval *tv)
 static void initialize_sntp(void)
 {
 	ESP_LOGI(TAG, "Initializing SNTP");
-	sntp_setoperatingmode(SNTP_OPMODE_POLL);
-	sntp_setservername(0, "pool.ntp.org");
-	sntp_set_time_sync_notification_cb(time_sync_notification_cb);
-	sntp_init();
+	esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+	esp_sntp_setservername(0, "pool.ntp.org");
+	esp_sntp_set_time_sync_notification_cb(time_sync_notification_cb);
+	esp_sntp_init();
 }
 
 static void sync_time(void)
@@ -286,7 +285,7 @@ static void sync_time(void)
 	// struct tm timeinfo = { 0 };
 	int retry = 0;
 	const int retry_count = 10;
-	while (sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET
+	while (esp_sntp_get_sync_status() == SNTP_SYNC_STATUS_RESET
 	       && ++retry < retry_count) {
 		ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)",
 			 retry, retry_count);
