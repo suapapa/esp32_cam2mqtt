@@ -21,7 +21,7 @@
     "*.ipp": "cpp"
   },
   "idf.adapterTargetName": "esp32",
-  "idf.port": "/dev/tty.usbserial-110",
+  "idf.port": "/dev/tty.usbserial-10",
   "idf.pythonInstallPath": "/opt/homebrew/bin/python3",
   "idf.espIdfPath": "/Users/suapapa/esp/v6.0/esp-idf",
   "idf.toolsPath": "/Users/suapapa/.espressif",

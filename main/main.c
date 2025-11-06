@@ -247,6 +247,38 @@ static esp_err_t init_camera()
 		return err;
 	}
 
+	sensor_t *s = esp_camera_sensor_get();
+	if (s == NULL) {
+		// ... (error handling) ...
+		return ESP_FAIL;
+	}
+
+	// Enable Auto Exposure (AEC) - it is usually enabled by default (value 1)
+	// If you need to explicitly ensure it is on, you can set it:
+	err = s->set_exposure_ctrl(s, 1);	// 1 to enable, 0 to disable
+	if (err != ESP_OK) {
+		// ... (error handling) ...
+		return err;
+	}
+
+	// Auto Gain Control (AGC) is often linked and also best left enabled
+	err = s->set_gain_ctrl(s, 1);	// 1 to enable, 0 to disable
+	if (err != ESP_OK) {
+		// ... (error handling) ...
+		return err;
+	}
+
+	// Auto White Balance (AWB)
+	// err = s->set_whitebal_ctrl(s, 1); // 1 to enable, 0 to disable
+	// if (err != ESP_OK) {
+	//     // ... (error handling) ...
+	//     return err;
+	// }
+
+	// Optional: Adjust the *target* level for the auto-exposure algorithm (if supported by the driver)
+	// Range is typically -2 to +2, or 0-255 depending on the specific sensor/driver
+	// s->set_aec_value(s, <value>);
+
 	return ESP_OK;
 }
 
@@ -271,7 +303,7 @@ static void initialize_sntp(void)
 {
 	ESP_LOGI(TAG, "Initializing SNTP");
 	esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-	esp_sntp_setservername(0, "pool.ntp.org");
+	esp_sntp_setservername(0, "time.google.com");
 	esp_sntp_set_time_sync_notification_cb(time_sync_notification_cb);
 	esp_sntp_init();
 }
@@ -299,13 +331,14 @@ static void sync_time(void)
 
 /* ---- */
 
-void draw_info_string(uint8_t * fb_buf, const char *str)
+void draw_info_string(uint8_t *fb_buf, const char *str)
 {
 	// VGA
 	int cam_w = 640;
 	int cam_h = 480;
 
 	set_defaultfont();
+
 	draw_string(fb_buf, cam_w, cam_h, 8 - 1, 8, str, FONTCOLOR_BLACK);
 	draw_string(fb_buf, cam_w, cam_h, 8 + 1, 8, str, FONTCOLOR_BLACK);
 	draw_string(fb_buf, cam_w, cam_h, 8, 8 - 1, str, FONTCOLOR_BLACK);
@@ -350,7 +383,8 @@ void app_main(void)
 	}
 
 	char strftime_buf[32];
-	strftime(strftime_buf, sizeof(strftime_buf), "%c", &timeinfo);
+	strftime(strftime_buf, sizeof(strftime_buf), "%Y-%m-%d (%a) %H:%M:%S",
+		 &timeinfo);
 	ESP_LOGI(TAG, "The current date/time is: %s", strftime_buf);
 
 	// gpio_set_level(FLASHLIGHT_GPIO, 1);  // on
@@ -359,11 +393,11 @@ void app_main(void)
 	vTaskDelay(5000 / portTICK_PERIOD_MS);
 
 	camera_fb_t *fb;
-	// waste first 5 frame for Auto Expose
-	for (int i = 0; i < 5; i++) {
-	     fb = esp_camera_fb_get();
-	     esp_camera_fb_return(fb);
-	}
+	// // waste first 5 frame for Auto Expose
+	// for (int i = 0; i < 5; i++) {
+	//      fb = esp_camera_fb_get();
+	//      esp_camera_fb_return(fb);
+	// }
 	fb = esp_camera_fb_get();
 	// gpio_set_level(FLASHLIGHT_GPIO, 0);  // off
 
