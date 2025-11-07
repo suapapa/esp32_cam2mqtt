@@ -393,11 +393,11 @@ void app_main(void)
 	vTaskDelay(5000 / portTICK_PERIOD_MS);
 
 	camera_fb_t *fb;
-	// // waste first 5 frame for Auto Expose
-	// for (int i = 0; i < 5; i++) {
-	//      fb = esp_camera_fb_get();
-	//      esp_camera_fb_return(fb);
-	// }
+	// waste first 10 frames for Auto Expose
+	for (int i = 0; i < 10; i++) {
+	     fb = esp_camera_fb_get();
+	     esp_camera_fb_return(fb);
+	}
 	fb = esp_camera_fb_get();
 	// gpio_set_level(FLASHLIGHT_GPIO, 0);  // off
 
